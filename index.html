@@ -264,23 +264,28 @@ function viewAno(){
       (hasLine?'<div class="legend"><span><i class="sw" style="background:var(--rain)"></i>acima da sua média</span><span><i class="sw" style="background:var(--amber)"></i>abaixo</span><span><i class="sw" style="width:18px;height:0;border-top:2px dashed var(--ink2)"></i>sua média</span></div>'
               :'<div class="note" style="margin-top:10px"><span class="bi">ℹ︎</span><span>Com 2+ anos de dados, aparece aqui a sua média mensal para comparação.</span></div>')+'</div>';
   } else {
-    g+='<p class="sub">Chuva por mês (mm) · seus dados, ano a ano</p>';
-    const th='padding:9px 7px;font-weight:600;color:var(--ink2)';
-    const sticky='position:sticky;left:0;background:var(--bg)';
-    g+='<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:14px;min-width:'+(64+yrs.length*52+58)+'px;width:100%">';
-    g+='<tr><th style="text-align:left;'+th+';'+sticky+'">Mês</th>';
-    for(const y of yrs) g+='<th style="text-align:right;'+th+'">'+y+'</th>';
-    g+='<th style="text-align:right;'+th+';color:var(--rain-d)">Média</th></tr>';
+    g+='<p class="sub">Chuva por mês (mm) · média e anos</p>';
+    const padc='padding:9px 7px', mesW='50px';
+    const stMes='position:sticky;left:0;background:var(--bg);min-width:'+mesW+';width:'+mesW;
+    const stMed='position:sticky;left:'+mesW+';background:var(--bg);min-width:66px;width:66px;border-right:1.5px solid var(--line2)';
+    g+='<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="border-collapse:collapse;font-size:14px;min-width:'+(116+yrs.length*52)+'px;width:100%">';
+    g+='<tr><th style="text-align:left;'+padc+';font-weight:600;color:var(--ink2);'+stMes+'">Mês</th>'
+      +'<th style="text-align:right;'+padc+';font-weight:700;color:var(--rain-d);'+stMed+'">Média</th>';
+    for(const y of yrs) g+='<th style="text-align:right;'+padc+';font-weight:600;color:var(--ink2)">'+y+'</th>';
+    g+='</tr>';
     for(let m=1;m<=12;m++){
-      g+='<tr style="border-top:1px solid var(--line)"><td style="text-align:left;padding:9px 7px;font-weight:600;color:var(--ink);'+sticky+'">'+MESA[m-1]+'</td>';
-      for(const y of yrs){ const v=monthTotal(y,m); g+='<td style="text-align:right;padding:9px 7px;color:var(--ink)">'+(v==null?'·':num(v))+'</td>'; }
-      const cn=clientNormalMonth(m); g+='<td style="text-align:right;padding:9px 7px;color:var(--rain-d);font-weight:600">'+(cn==null?'—':num(cn))+'</td></tr>';
+      const cn=clientNormalMonth(m);
+      g+='<tr style="border-top:1px solid var(--line)"><td style="text-align:left;'+padc+';font-weight:600;color:var(--ink);'+stMes+'">'+MESA[m-1]+'</td>'
+        +'<td style="text-align:right;'+padc+';font-weight:700;color:var(--rain-d);'+stMed+'">'+(cn==null?'—':num(cn))+'</td>';
+      for(const y of yrs){ const v=monthTotal(y,m); g+='<td style="text-align:right;'+padc+';color:var(--ink)">'+(v==null?'·':num(v))+'</td>'; }
+      g+='</tr>';
     }
-    g+='<tr style="border-top:2px solid var(--line2)"><td style="text-align:left;padding:9px 7px;font-weight:700;'+sticky+'">Total</td>';
-    for(const y of yrs){ const tt=yearAgg(y).total; g+='<td style="text-align:right;padding:9px 7px;font-weight:700;color:var(--ink)">'+(tt==null?'·':num(tt))+'</td>'; }
-    const cny=clientNormalYear(); g+='<td style="text-align:right;padding:9px 7px;font-weight:700;color:var(--rain-d)">'+(cny==null?'—':num(cny))+'</td></tr>';
-    g+='</table></div>';
-    g+='<div class="note" style="margin-top:12px"><span class="bi">ℹ︎</span><span>Cada coluna é um ano. A coluna <b style="color:var(--rain-d)">Média</b> é a sua média mensal (com 2+ anos). "·" = mês sem dados.</span></div>';
+    const cny=clientNormalYear();
+    g+='<tr style="border-top:2px solid var(--line2)"><td style="text-align:left;'+padc+';font-weight:700;'+stMes+'">Total</td>'
+      +'<td style="text-align:right;'+padc+';font-weight:700;color:var(--rain-d);'+stMed+'">'+(cny==null?'—':num(cny))+'</td>';
+    for(const y of yrs){ const tt=yearAgg(y).total; g+='<td style="text-align:right;'+padc+';font-weight:700;color:var(--ink)">'+(tt==null?'·':num(tt))+'</td>'; }
+    g+='</tr></table></div>';
+    g+='<div class="note" style="margin-top:12px"><span class="bi">ℹ︎</span><span>A coluna <b style="color:var(--rain-d)">Média</b> (logo após o mês) é a sua média mensal e fica sempre visível; os anos seguem à direita. "·" = mês sem dados; "—" = média precisa de 2+ anos.</span></div>';
   }
   el(g);
 }
@@ -330,7 +335,7 @@ function viewMenu(){
   el('<h2 class="t">Menu</h2><p class="sub">Configurações e ferramentas</p>'+
     '<button class="listbtn" onclick="go(\'props\')"><span class="bi">⌂</span><div>Propriedades e pluviômetros<div class="d">Adicionar, renomear e selecionar</div></div></button>'+
     '<button class="listbtn" onclick="go(\'avancado\')"><span class="bi">⤓</span><div>Backup e exportação<div class="d">Exportar, importar e fazer cópia de segurança</div></div></button>'+
-    '<div style="text-align:center;color:var(--ink3);font-size:12px;margin-top:20px">PROEST Pluviometria · versão 17/06-c — calendário ajustado</div>');
+    '<div style="text-align:center;color:var(--ink3);font-size:12px;margin-top:20px">PROEST Pluviometria · versão 17/06-d — média no histórico</div>');
 }
 function viewAvancado(){
   el(backbar('menu')+'<h2 class="t">Backup e exportação</h2><p class="sub">Ferramentas avançadas</p>'+
