@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Pluviometria" />
+<meta name="theme-color" content="#1E73B8" />
+<title>PROEST Pluviometria</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#FBF8F2; --card:#ffffff; --line:#E7E0D2; --line2:#D9D1BF;
+    --ink:#0c2236; --ink2:#4A5C6B; --ink3:#8294A2;
+    --rain:#1E73B8; --rain-d:#0E4C82; --rain-50:#EAF4FB; --rain-200:#A9D3EE; --rain-400:#4BA3DC; --rain-900:#0B3F6E;
+    --amber:#D9821F; --amber-bg:#FAEEDA; --amber-ink:#7A4708;
+    --soja:#4F9326; --nodata:#ECE7DA;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0a1622; --card:#13263d; --line:#22405e; --line2:#2c4a68;
+      --ink:#f2f7fc; --ink2:#b3c6d8; --ink3:#7e96ac; --rain-50:#16364f; --nodata:#1d3349; }
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-feature-settings:"tnum" 1;font-size:17px;-webkit-text-size-adjust:100%}
+  #app{max-width:480px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
+  #top{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 8px;gap:10px}
+  .pill{display:inline-flex;align-items:center;gap:7px;background:var(--rain-50);color:var(--rain-d);font-size:16px;font-weight:600;padding:11px 16px;border-radius:24px;border:none;cursor:pointer;max-width:74vw;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .topbtn{background:var(--rain-50);border:none;color:var(--rain-d);width:46px;height:46px;border-radius:50%;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  #screen{flex:1;padding:4px 16px 104px;overflow-y:auto;overflow-x:hidden}
+  h2.t{font-size:25px;font-weight:600;margin:8px 0 3px;color:var(--ink)}
+  .sub{font-size:15px;color:var(--ink2);margin:0 0 14px}
+  .card{background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:16px}
+  .row{display:flex;gap:11px}
+  .mcard{flex:1;background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:13px 14px;text-align:center}
+  .mlab{font-size:13px;color:var(--ink2);font-weight:500}
+  .mval{font-size:27px;font-weight:700;color:var(--ink);line-height:1.1;margin-top:3px}
+  .msub{font-size:13px;color:var(--ink3);margin-top:1px}
+  .hero{background:var(--rain);border-radius:22px;padding:20px}
+  .hero .lab{font-size:15px;color:#cfe6fa;font-weight:500}
+  .hero .big{font-size:58px;font-weight:700;line-height:1;color:#fff;margin:2px 0 4px}
+  .hero .big span{font-size:22px;font-weight:600;color:#cfe6fa}
+  .hero .meta{font-size:16px;color:#eaf4fb;font-weight:500}
+  .bigbtn{display:flex;align-items:center;gap:14px;width:100%;border:none;border-radius:18px;padding:20px 18px;font-size:19px;font-weight:600;cursor:pointer;margin-top:12px;text-align:left;color:#fff;background:var(--rain)}
+  .bigbtn.sec{background:var(--card);color:var(--ink);border:1.5px solid var(--line2)}
+  .bigbtn .bi{font-size:30px;width:34px;text-align:center;font-style:normal}
+  .bigbtn .d{font-size:14px;font-weight:500;opacity:.92}
+  .bigbtn.sec .d{color:var(--ink2);opacity:1}
+  .listbtn{display:flex;align-items:center;gap:14px;width:100%;background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:18px 16px;font-size:18px;color:var(--ink);cursor:pointer;text-align:left;margin-bottom:12px;font-weight:600}
+  .listbtn .bi{font-size:28px;color:var(--rain);font-style:normal;width:32px;text-align:center}
+  .listbtn .d{font-size:14px;color:var(--ink2);font-weight:500}
+  .note{display:flex;gap:10px;align-items:center;background:var(--rain-50);color:var(--rain-d);border-radius:14px;padding:14px 16px;font-size:15px;font-weight:500;margin-top:6px}
+  .note.amber{background:var(--amber-bg);color:var(--amber-ink)}
+  .note .bi{font-size:22px;font-style:normal}
+  .seg{display:flex;background:var(--card);border:1.5px solid var(--line);border-radius:15px;padding:4px;gap:4px;margin-bottom:14px}
+  .seg button{flex:1;border:none;background:none;color:var(--ink2);font-size:16px;font-weight:600;padding:12px;border-radius:11px;cursor:pointer}
+  .seg button.on{background:var(--rain);color:#fff}
+  .legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:14px;font-size:14px;color:var(--ink2)}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .sw{width:16px;height:16px;border-radius:4px;display:inline-block}
+  /* calendário mensal */
+  .calnav{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .calnav .arrow{background:var(--card);border:1.5px solid var(--line2);color:var(--ink);width:48px;height:48px;border-radius:14px;font-size:26px;cursor:pointer;flex:none}
+  .calnav .mtitle{flex:1;text-align:center;font-size:21px;font-weight:700;color:var(--ink);background:none;border:none;cursor:pointer;padding:6px}
+  .wk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-bottom:6px}
+  .wk span{text-align:center;font-size:13px;font-weight:600;color:var(--ink3)}
+  .cgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+  .day{height:56px;min-width:0;overflow:hidden;border:1.5px solid var(--line);border-radius:12px;background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px}
+  .day .dn{font-size:16px;font-weight:600;line-height:1}
+  .day .dv{font-size:14px;font-weight:700;line-height:1.1;margin-top:2px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .day.empty{visibility:hidden}
+  .day.today{box-shadow:0 0 0 3px var(--rain-d);border-color:var(--rain-d)}
+  .monthgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:11px}
+  .mtile{border:1.5px solid var(--line);border-radius:16px;padding:14px;cursor:pointer;background:var(--card)}
+  .mtile .mn{font-size:15px;font-weight:600;color:var(--ink2)}
+  .mtile .mt{font-size:25px;font-weight:700;color:var(--ink);margin-top:4px}
+  .mtile .ms{font-size:13px;color:var(--ink3)}
+  /* propriedades */
+  .gaugerow{display:flex;align-items:center;gap:12px;padding:16px 14px;border-radius:14px;border:1.5px solid var(--line);margin-bottom:10px;cursor:pointer;background:var(--bg)}
+  .gaugerow.on{border-color:var(--rain);background:var(--rain-50)}
+  .gaugerow .gn{flex:1;font-size:17px;font-weight:600;color:var(--ink)}
+  .gaugerow .mini{font-size:13px;color:var(--ink3);font-weight:500}
+  .tinybtn{background:none;border:none;color:var(--ink2);font-size:23px;cursor:pointer;padding:6px 8px}
+  .empty{text-align:center;color:var(--ink3);font-size:16px;padding:40px 14px;line-height:1.5}
+  /* tabs */
+  #tabs{position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;height:74px;background:var(--card);border-top:1.5px solid var(--line);display:flex;justify-content:space-around;align-items:center;padding-bottom:env(safe-area-inset-bottom)}
+  #tabs button{background:none;border:none;color:var(--ink3);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;font-size:26px}
+  #tabs button .lab{font-size:12px;font-weight:600}
+  #tabs button.on{color:var(--rain)}
+  .fab{width:62px;height:62px;border-radius:50%;background:var(--rain);color:#fff!important;display:flex;align-items:center;justify-content:center;margin-top:-26px;border:5px solid var(--bg)!important;font-size:34px}
+  /* sheet/teclado */
+  #sheet{position:fixed;inset:0;background:rgba(8,20,32,.5);display:none;align-items:flex-end;z-index:50}
+  #sheet.open{display:flex}
+  .sheetbox{background:var(--bg);width:100%;max-width:480px;margin:0 auto;border-radius:26px 26px 0 0;padding:14px 16px calc(20px + env(safe-area-inset-bottom));}
+  .sheethead{display:flex;justify-content:space-between;align-items:center}
+  .sheethead .gname{font-size:16px;color:var(--ink2);font-weight:600;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .closebtn{background:var(--card);border:1.5px solid var(--line2);color:var(--ink);width:42px;height:42px;border-radius:50%;font-size:22px;cursor:pointer;flex:none}
+  .datenav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0}
+  .datenav .arrow{background:var(--card);border:1.5px solid var(--line2);color:var(--ink);width:52px;height:52px;border-radius:15px;font-size:28px;cursor:pointer;flex:none}
+  .datenav .d{flex:1;text-align:center;font-size:21px;font-weight:700;color:var(--ink)}
+  .disp{text-align:center;margin:6px 0 14px}
+  .disp .n{font-size:62px;font-weight:700;color:var(--ink)}
+  .disp .u{font-size:22px;color:var(--ink3);font-weight:600}
+  .keys{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .key{height:64px;background:var(--card);border:1.5px solid var(--line2);border-radius:15px;font-size:30px;font-weight:600;color:var(--ink);cursor:pointer}
+  .key:active{background:var(--rain-50)}
+  .acts{display:flex;gap:10px;margin-top:13px}
+  .btn-sun{flex:1;height:62px;border:1.5px solid #E9C77E;background:var(--amber-bg);color:var(--amber-ink);border-radius:16px;font-size:17px;font-weight:700;cursor:pointer}
+  .btn-ok{flex:1.3;height:62px;border:none;background:var(--rain);color:#fff;border-radius:16px;font-size:18px;font-weight:700;cursor:pointer}
+  .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:15px;padding:13px 20px;border-radius:26px;display:flex;gap:16px;align-items:center;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none;font-weight:500}
+  .toast.show{opacity:1;pointer-events:auto}
+  .toast button{background:none;border:none;color:#8fc8ff;font-weight:700;cursor:pointer;font-size:15px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="top">
+    <button class="pill" id="stationPill" onclick="go('props')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 21s-7-6.7-7-12a7 7 0 0114 0c0 5.3-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg><span id="stationName">—</span><span style="opacity:.6">▾</span></button>
+    <button class="topbtn" onclick="go('menu')" aria-label="Menu">≡</button>
+  </div>
+  <div id="screen"></div>
+  <div id="tabs"></div>
+</div>
+<div id="sheet"><div class="sheetbox" id="sheetbox"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const MES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const MESA=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const MESU=['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+const WK=[['D','dom'],['S','seg'],['T','ter'],['Q','qua'],['Q','qui'],['S','sex'],['S','sáb']];
+
+/* ===== dados: Propriedade -> pluviômetros -> leitura diária ===== */
+let farms=[], sel={farm:null,gauge:null}, readings={};
+function uid(p){ return p+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function pad(n){return (n<10?'0':'')+n;}
+function iso(y,m,d){return y+'-'+pad(m)+'-'+pad(d);}
+function dim(y,m){return [31,(y%4===0&&(y%100!==0||y%400===0))?29:28,31,30,31,30,31,31,30,31,30,31][m-1];}
+function today(){const n=new Date();return {y:n.getFullYear(),m:n.getMonth()+1,d:n.getDate()};}
+function num(n){ return (Math.round(n*10)/10).toLocaleString('pt-BR'); }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+function persist(){ try{ localStorage.setItem('pp.v2.farms',JSON.stringify(farms)); localStorage.setItem('pp.v2.sel',JSON.stringify(sel)); localStorage.setItem('pp.v2.readings',JSON.stringify(readings)); }catch(e){} }
+function loadLS(){ try{ farms=JSON.parse(localStorage.getItem('pp.v2.farms')||'[]'); sel=JSON.parse(localStorage.getItem('pp.v2.sel')||'{}'); readings=JSON.parse(localStorage.getItem('pp.v2.readings')||'{}'); }catch(e){ farms=[];sel={};readings={}; } }
+function seed(){ loadLS(); if(!farms.length){ const g={id:uid('g'),nome:'Pluviômetro principal'}; farms=[{id:uid('f'),nome:'Minha propriedade',gauges:[g]}]; sel={farm:farms[0].id,gauge:g.id}; readings[g.id]={}; persist(); } if(!findGauge(sel.gauge)) selectFirst(); }
+function findFarm(id){ return farms.find(f=>f.id===id); }
+function findGauge(id){ for(const f of farms){ const g=(f.gauges||[]).find(x=>x.id===id); if(g) return {farm:f,gauge:g}; } return null; }
+function selectFirst(){ for(const f of farms){ if(f.gauges&&f.gauges.length){ sel={farm:f.id,gauge:f.gauges[0].id}; persist(); return; } } }
+function curFarm(){ const r=findGauge(sel.gauge); return r?r.farm:null; }
+function curGauge(){ const r=findGauge(sel.gauge); return r?r.gauge:null; }
+function R(){ if(!readings[sel.gauge]) readings[sel.gauge]={}; return readings[sel.gauge]; }
+
+/* ===== cálculos (somente dados do cliente) ===== */
+function rd(y,m,d){ const v=R()[iso(y,m,d)]; return v===undefined?undefined:v; }
+function hasDaily(y,m){ for(let d=1;d<=dim(y,m);d++){ if(rd(y,m,d)!==undefined) return true; } return false; }
+function monthAgg(y,m){ let s=0,dias=0,med=0; for(let d=1;d<=dim(y,m);d++){ const v=rd(y,m,d); if(v!==undefined){med++; s+=v; if(v>0)dias++;} } return {total:med?Math.round(s*10)/10:null,dias:dias,med:med}; }
+function monthTotal(y,m){ return monthAgg(y,m).total; }
+function yearAgg(y){ let s=0,dias=0,has=false; for(let m=1;m<=12;m++){ const a=monthAgg(y,m); if(a.total!=null){s+=a.total;dias+=a.dias;has=true;} } return {total:has?Math.round(s*10)/10:null,dias:dias}; }
+function yearsWithData(){ const ys=new Set(); for(const k in R()){ ys.add(+k.slice(0,4)); } return Array.from(ys).sort(); }
+function latestDataYear(){ const ys=yearsWithData(); return ys.length?ys[ys.length-1]:today().y; }
+function clientNormalMonth(m){ let s=0,n=0; for(const y of yearsWithData()){ const t=monthTotal(y,m); if(t!=null){s+=t;n++;} } return n>=2?s/n:null; }
+function clientNormalYear(){ let s=0,ok=true; for(let m=1;m<=12;m++){ const v=clientNormalMonth(m); if(v==null){ok=false;break;} s+=v; } return ok?s:null; }
+function pendingDays(y,m,upto){ const out=[]; const last=Math.min(upto||dim(y,m),dim(y,m)); for(let d=1;d<=last;d++){ if(rd(y,m,d)===undefined)out.push(d); } return out; }
+
+function cDay(v){ if(v==null)return null; if(v===0)return {bg:'var(--rain-50)',fg:'var(--ink2)'}; if(v<=5)return {bg:'var(--rain-200)',fg:'var(--rain-900)'}; if(v<=15)return {bg:'var(--rain-400)',fg:'#fff'}; if(v<=30)return {bg:'var(--rain)',fg:'#fff'}; return {bg:'var(--rain-900)',fg:'#fff'}; }
+function cMon(v){ if(v==null)return 'var(--nodata)'; if(v<=10)return 'var(--rain-50)'; if(v<=60)return 'var(--rain-200)'; if(v<=150)return 'var(--rain-400)'; if(v<=280)return 'var(--rain)'; return 'var(--rain-900)';}
+
+/* ===== navegação ===== */
+let view='inicio', calY=today().y, calM=today().m, anoYear=today().y, anoMode='ano';
+let cursor=today(), kp='', lastAction=null, mpYear=today().y;
+const SC=()=>document.getElementById('screen');
+function el(html){ SC().innerHTML=html; }
+function backbar(target){ return '<button onclick="go(\''+target+'\')" style="background:var(--card);border:1.5px solid var(--line2);color:var(--ink);border-radius:22px;padding:9px 16px;font-size:15px;font-weight:600;cursor:pointer;margin:2px 0 8px">‹ Voltar</button>'; }
+function mcard(lab,val,sub){ return '<div class="mcard"><div class="mlab">'+lab+'</div><div class="mval">'+val+'</div>'+(sub?'<div class="msub">'+sub+'</div>':'')+'</div>'; }
+
+/* ===== TELA: Início ===== */
+function viewInicio(){
+  const t=today(), y=t.y, m=t.m, a=monthAgg(y,m), ya=yearAgg(y);
+  const pend=pendingDays(y,m,t.d);
+  const nudge=pend.length>0
+    ? '<button class="note amber" style="width:100%;border:none;cursor:pointer;font-size:16px;justify-content:flex-start" onclick="openSheetAt('+y+','+m+','+pend[0]+')"><span class="bi">⚠︎</span><span>Faltam lançar <b>'+pend.length+' dia(s)</b> este mês — toque para registrar</span></button>'
+    : '<div class="note" style="font-size:16px"><span class="bi">✓</span><span>Todos os dias deste mês foram lançados.</span></div>';
+  el(
+    '<h2 class="t">'+MES[m-1]+'</h2><p class="sub">Hoje, '+pad(t.d)+'/'+pad(m)+'/'+y+'</p>'+
+    '<div class="hero"><div class="lab">Chuva acumulada no mês</div>'+
+      '<div class="big">'+(a.total!=null?num(a.total):'0')+' <span>mm</span></div>'+
+      '<div class="meta">'+a.dias+' dia'+(a.dias===1?'':'s')+' com chuva</div></div>'+
+    '<button class="bigbtn" onclick="openSheetAt('+y+','+m+','+t.d+')"><span class="bi">＋</span><div>Lançar chuva de hoje<div class="d">Dia '+pad(t.d)+'/'+pad(m)+' · poucos toques</div></div></button>'+
+    '<button class="bigbtn sec" onclick="go(\'cal\')"><span class="bi">▦</span><div>Abrir calendário<div class="d">Lançar ou corrigir qualquer dia</div></div></button>'+
+    '<div style="margin-top:14px">'+nudge+'</div>'+
+    '<div class="row" style="margin-top:14px">'+
+      mcard('Total do ano', ya.total!=null?num(ya.total):'0', 'mm em '+y)+
+      mcard('Dias com chuva', ya.dias, 'no ano')+
+    '</div>'
+  );
+}
+
+/* ===== TELA: Calendário (mensal, grande, com valores) ===== */
+function viewCal(){
+  const t=today();
+  let g='<div class="calnav"><button class="arrow" onclick="bumpMonth(-1)" aria-label="mês anterior">‹</button>'+
+    '<button class="mtitle" onclick="openMonthPicker()">'+MES[calM-1]+' '+calY+' ▾</button>'+
+    '<button class="arrow" onclick="bumpMonth(1)" aria-label="próximo mês">›</button></div>';
+  if(!(calY===t.y&&calM===t.m)) g+='<div style="text-align:center;margin-bottom:8px"><button class="pill" onclick="calY='+t.y+';calM='+t.m+';viewCal()">↩ Ir para o mês de hoje</button></div>';
+  g+='<div class="wk">'+WK.map(w=>'<span title="'+w[1]+'">'+w[0]+'</span>').join('')+'</div>';
+  const first=new Date(calY,calM-1,1).getDay(), nd=dim(calY,calM);
+  g+='<div class="cgrid">';
+  for(let i=0;i<first;i++) g+='<div class="day empty"></div>';
+  for(let d=1;d<=nd;d++){
+    const v=rd(calY,calM,d); const c=cDay(v===undefined?null:v);
+    const isToday=(calY===t.y&&calM===t.m&&d===t.d);
+    const style=c?('background:'+c.bg+';border-color:'+c.bg+';color:'+c.fg):'';
+    const dv=(v===undefined)?'':(v===0?'•':num(v));
+    g+='<button class="day'+(isToday?' today':'')+'" style="'+style+'" onclick="openSheetAt('+calY+','+calM+','+d+')">'+
+       '<span class="dn">'+d+'</span>'+(dv!==''?'<span class="dv">'+dv+'</span>':'')+'</button>';
+  }
+  g+='</div>';
+  const a=monthAgg(calY,calM);
+  g+='<div class="row" style="margin-top:14px">'+mcard('Total do mês', a.total!=null?num(a.total):'0','mm')+mcard('Dias com chuva', a.dias,'')+mcard('Lançados', a.med+'/'+nd,'dias')+'</div>';
+  g+='<div class="legend"><span><i class="sw" style="background:var(--card);border:1.5px solid var(--line)"></i>sem lançar</span>'+
+     '<span><i class="sw" style="background:var(--rain-50)"></i>0 (•)</span>'+
+     '<span><i class="sw" style="background:var(--rain-200)"></i>fraca</span>'+
+     '<span><i class="sw" style="background:var(--rain-400)"></i>média</span>'+
+     '<span><i class="sw" style="background:var(--rain)"></i>forte</span>'+
+     '<span><i class="sw" style="background:var(--rain-900)"></i>muito forte</span></div>'+
+     '<div class="note" style="margin-top:12px"><span class="bi">＋</span><span>Toque em qualquer dia para lançar. O número dentro é a chuva em mm.</span></div>';
+  el(g);
+}
+function bumpMonth(delta){ let mm=calM-1+delta, yy=calY; while(mm<0){mm+=12;yy--;} while(mm>11){mm-=12;yy++;} calM=mm+1; calY=yy; viewCal(); }
+function openMonthPicker(){ mpYear=calY; renderPicker(); document.getElementById('sheet').classList.add('open'); }
+function renderPicker(){
+  let h='<div class="sheethead"><span class="gname">Escolher mês e ano</span><button class="closebtn" onclick="closeSheet()">✕</button></div>'+
+    '<div class="datenav"><button class="arrow" onclick="mpY(-1)">‹</button><div class="d">'+mpYear+'</div><button class="arrow" onclick="mpY(1)">›</button></div>'+
+    '<div class="monthgrid" style="grid-template-columns:repeat(3,1fr)">';
+  for(let m=1;m<=12;m++){ const on=(m===calM&&mpYear===calY); h+='<button class="mtile" style="text-align:center;'+(on?'border-color:var(--rain);background:var(--rain-50)':'')+'" onclick="pickMonth('+m+')"><div class="mn">'+MESA[m-1]+'</div></button>'; }
+  h+='</div>';
+  document.getElementById('sheetbox').innerHTML=h;
+}
+function mpY(d){ mpYear+=d; renderPicker(); }
+function pickMonth(m){ calY=mpYear; calM=m; document.getElementById('sheet').classList.remove('open'); viewCal(); }
+
+/* ===== TELA: Análise (só dados do cliente) ===== */
+function viewAno(){
+  let g='<h2 class="t">Análise</h2>'+
+    '<div class="seg"><button class="'+(anoMode==='ano'?'on':'')+'" onclick="setAnoMode(\'ano\')">Visão anual</button>'+
+    '<button class="'+(anoMode==='hist'?'on':'')+'" onclick="setAnoMode(\'hist\')">Histórico</button></div>';
+  const yrs=yearsWithData();
+  if(!yrs.length){ g+='<div class="empty">Ainda não há lançamentos neste pluviômetro.<br><br>Comece a registrar a chuva e seus gráficos e médias aparecem aqui — sempre com os <b>seus próprios dados</b>.</div>'; el(g); return; }
+  if(anoMode==='ano'){
+    if(yearAgg(anoYear).total==null){ const ly=latestDataYear(); if(ly!==anoYear) anoYear=ly; }
+    g+='<div class="calnav" style="margin-bottom:12px"><button class="arrow" onclick="bumpAno(-1)">‹</button><div class="mtitle" style="cursor:default">'+anoYear+'</div><button class="arrow" onclick="bumpAno(1)">›</button></div>';
+    const ya=yearAgg(anoYear), cny=clientNormalYear();
+    let maxc='—',maxv=-1,minc='—',minv=1e9, any=false;
+    for(let m=1;m<=12;m++){const v=monthTotal(anoYear,m); if(v!=null){any=true; if(v>maxv){maxv=v;maxc=MESU[m-1];} if(v<minv){minv=v;minc=MESU[m-1];}}}
+    g+='<div class="row" style="margin-bottom:12px">'+
+      mcard('Total do ano', ya.total!=null?num(ya.total):'0','mm'+(cny?' · '+(Math.round((ya.total-cny)/cny*100))+'% vs sua média':''))+
+      mcard('Mais chuvoso', maxc, maxv>=0?num(maxv)+' mm':'')+
+      mcard('Mais seco', minc, minv<1e9?num(minv)+' mm':'')+'</div>';
+    const W=340,H=190,P=6; let mx=10; for(let m=1;m<=12;m++){const v=monthTotal(anoYear,m); if(v!=null&&v>mx)mx=v; if(cny){const c=clientNormalMonth(m); if(c&&c>mx)mx=c;}} mx=Math.ceil(mx/50)*50;
+    const bw=(W-2*P)/12; let bars='',line=[],hasLine=false;
+    for(let i=0;i<12;i++){ const v=monthTotal(anoYear,i+1), x=P+i*bw, cn=clientNormalMonth(i+1);
+      if(v!=null){ const h=(v/mx)*(H-30), acima=(cn==null||v>=cn); bars+='<rect x="'+(x+3)+'" y="'+(H-24-h)+'" width="'+(bw-6)+'" height="'+h+'" rx="2" fill="'+(cn==null?'var(--rain)':(acima?'var(--rain)':'var(--amber)'))+'"/>'; }
+      bars+='<text x="'+(x+bw/2)+'" y="'+(H-8)+'" font-size="11" fill="var(--ink3)" text-anchor="middle">'+MESU[i][0]+'</text>';
+      if(cn!=null){ hasLine=true; line.push((x+bw/2)+','+(H-24-(cn/mx)*(H-30))); }
+    }
+    g+='<div class="card"><svg viewBox="0 0 '+W+' '+H+'" width="100%" role="img" aria-label="Chuva mensal de '+anoYear+'">'+bars+(hasLine?'<polyline points="'+line.join(' ')+'" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="5 4"/>':'')+'</svg>'+
+      (hasLine?'<div class="legend"><span><i class="sw" style="background:var(--rain)"></i>acima da sua média</span><span><i class="sw" style="background:var(--amber)"></i>abaixo</span><span><i class="sw" style="width:18px;height:0;border-top:2px dashed var(--ink2)"></i>sua média</span></div>'
+              :'<div class="note" style="margin-top:10px"><span class="bi">ℹ︎</span><span>Com 2+ anos de dados, aparece aqui a sua média mensal para comparação.</span></div>')+'</div>';
+  } else {
+    g+='<p class="sub">Total mensal (mm) · seus dados, ano a ano</p>';
+    g+='<div style="display:grid;grid-template-columns:40px repeat(12,minmax(0,1fr));gap:3px;align-items:center"><span></span>';
+    for(let m=0;m<12;m++) g+='<span style="font-size:12px;font-weight:600;text-align:center;color:var(--ink3)">'+MESU[m][0]+'</span>';
+    for(const y of yrs){ g+='<span style="font-size:13px;font-weight:600;color:var(--ink2)">'+y+'</span>';
+      for(let m=1;m<=12;m++){ const v=monthTotal(y,m); g+='<span style="height:22px;border-radius:3px;background:'+cMon(v)+'" title="'+MESU[m-1]+' '+y+': '+(v==null?'sem dado':num(v)+' mm')+'"></span>'; } }
+    g+='</div><div class="legend"><span><i class="sw" style="background:var(--nodata)"></i>sem dado</span><span><i class="sw" style="background:var(--rain-50)"></i>seco</span><span><i class="sw" style="background:var(--rain-400)"></i>médio</span><span><i class="sw" style="background:var(--rain-900)"></i>muito chuvoso</span></div>';
+  }
+  el(g);
+}
+function setAnoMode(x){ anoMode=x; viewAno(); }
+function bumpAno(d){ const yrs=yearsWithData(); const lo=yrs.length?Math.min(yrs[0],1980):1980; anoYear=Math.max(lo,Math.min(today().y,anoYear+d)); viewAno(); }
+
+/* ===== TELA: Propriedades / pluviômetros ===== */
+function viewProps(){
+  let g=backbar('inicio')+'<h2 class="t">Propriedades</h2><p class="sub">Toque num pluviômetro para usá-lo. Nomes livres.</p>';
+  farms.forEach(function(f){
+    g+='<div class="card" style="margin-bottom:14px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><b style="flex:1;font-size:18px;font-weight:600">'+esc(f.nome)+'</b>'+
+      '<button class="tinybtn" onclick="renameFarm(\''+f.id+'\')" aria-label="renomear">✎</button>'+
+      '<button class="tinybtn" onclick="delFarm(\''+f.id+'\')" aria-label="excluir">🗑</button></div>';
+    (f.gauges||[]).forEach(function(gg){ const on=(gg.id===sel.gauge); const n=Object.keys(readings[gg.id]||{}).length;
+      const loc=(gg.lat!=null&&gg.lng!=null)?('📍 '+gg.lat.toFixed(4)+', '+gg.lng.toFixed(4)):'sem localização';
+      g+='<div class="gaugerow'+(on?' on':'')+'" onclick="selectGauge(\''+f.id+'\',\''+gg.id+'\')">'+
+        '<span style="font-size:22px;color:'+(on?'var(--rain)':'var(--ink3)')+'">'+(on?'◉':'○')+'</span>'+
+        '<div class="gn">'+esc(gg.nome)+'<div class="mini">'+n+' lançamento(s) · <span onclick="event.stopPropagation();locGauge(\''+gg.id+'\')" style="text-decoration:underline dotted">'+loc+'</span></div></div>'+
+        '<button class="tinybtn" onclick="event.stopPropagation();gpsGauge(\''+gg.id+'\')" aria-label="localização GPS" title="Usar GPS">📍</button>'+
+        '<button class="tinybtn" onclick="event.stopPropagation();renameGauge(\''+gg.id+'\')" aria-label="renomear">✎</button>'+
+        '<button class="tinybtn" onclick="event.stopPropagation();delGauge(\''+f.id+'\',\''+gg.id+'\')" aria-label="excluir">🗑</button></div>'; });
+    g+='<button class="listbtn" style="margin:6px 0 0;background:var(--bg)" onclick="addGauge(\''+f.id+'\')"><span class="bi">＋</span><div>Adicionar pluviômetro<div class="d">Ex.: Sede, Talhão 12, Pivô Norte</div></div></button></div>';
+  });
+  g+='<button class="listbtn" onclick="addFarm()"><span class="bi">＋</span><div>Adicionar propriedade<div class="d">Ex.: Fazenda Santa Maria</div></div></button>';
+  el(g);
+}
+function addFarm(){ const n=prompt('Nome da propriedade:',''); if(!n)return; const gg={id:uid('g'),nome:'Pluviômetro principal'}; const f={id:uid('f'),nome:n.trim(),gauges:[gg]}; farms.push(f); readings[gg.id]={}; sel={farm:f.id,gauge:gg.id}; persist(); render(); }
+function renameFarm(id){ const f=findFarm(id); if(!f)return; const n=prompt('Renomear propriedade:',f.nome); if(!n)return; f.nome=n.trim(); persist(); render(); }
+function delFarm(id){ const f=findFarm(id); if(!f)return; if(farms.length<=1){ alert('Mantenha ao menos uma propriedade.'); return; } if(!confirm('Excluir a propriedade "'+f.nome+'" e seus pluviômetros?'))return; (f.gauges||[]).forEach(g=>delete readings[g.id]); farms=farms.filter(x=>x.id!==id); if(!findGauge(sel.gauge)) selectFirst(); persist(); render(); }
+function addGauge(farmId){ const f=findFarm(farmId); if(!f)return; const n=prompt('Nome do pluviômetro:',''); if(!n)return; const gg={id:uid('g'),nome:n.trim()}; f.gauges=f.gauges||[]; f.gauges.push(gg); readings[gg.id]={}; sel={farm:f.id,gauge:gg.id}; persist(); render(); }
+function renameGauge(gid){ const r=findGauge(gid); if(!r)return; const n=prompt('Renomear pluviômetro:',r.gauge.nome); if(!n)return; r.gauge.nome=n.trim(); persist(); render(); }
+function delGauge(farmId,gid){ const f=findFarm(farmId); if(!f)return; if((f.gauges||[]).length<=1){ alert('Cada propriedade precisa de ao menos um pluviômetro.'); return; } const r=findGauge(gid); if(!confirm('Excluir o pluviômetro "'+(r?r.gauge.nome:'')+'" e seus lançamentos?'))return; f.gauges=f.gauges.filter(x=>x.id!==gid); delete readings[gid]; if(sel.gauge===gid) selectFirst(); persist(); render(); }
+function selectGauge(farmId,gid){ sel={farm:farmId,gauge:gid}; const t=today(); calY=t.y;calM=t.m;anoYear=latestDataYear(); persist(); go('inicio'); }
+function gpsGauge(gid){ const r=findGauge(gid); if(!r)return; if(!navigator.geolocation){ alert('GPS não disponível neste aparelho. Toque nas coordenadas para digitar manualmente.'); return; }
+  showToast('Obtendo localização do GPS…');
+  navigator.geolocation.getCurrentPosition(function(pos){ r.gauge.lat=+pos.coords.latitude.toFixed(6); r.gauge.lng=+pos.coords.longitude.toFixed(6); persist(); render(); showToast('Localização salva: '+r.gauge.lat.toFixed(4)+', '+r.gauge.lng.toFixed(4)); },
+    function(err){ alert('Não foi possível obter o GPS ('+err.message+').\nToque nas coordenadas para digitar manualmente.'); }, {enableHighAccuracy:true,timeout:12000,maximumAge:0}); }
+function locGauge(gid){ const r=findGauge(gid); if(!r)return; const cur=(r.gauge.lat!=null?r.gauge.lat+', '+r.gauge.lng:''); const s=prompt('Coordenadas (latitude, longitude):',cur); if(s===null)return;
+  if(s.trim()===''){ r.gauge.lat=null; r.gauge.lng=null; persist(); render(); return; }
+  let parts=s.trim().split(/[;\s]+/); if(parts.length<2) parts=s.split(',');
+  const la=parseFloat(String(parts[0]).replace(',','.')), ln=parseFloat(String(parts[1]).replace(',','.'));
+  if(isNaN(la)||isNaN(ln)||la<-90||la>90||ln<-180||ln>180){ alert('Coordenadas inválidas. Ex.: -18.331, -52.394'); return; }
+  r.gauge.lat=+la.toFixed(6); r.gauge.lng=+ln.toFixed(6); persist(); render(); showToast('Localização salva'); }
+
+/* ===== TELA: Menu ===== */
+function viewMenu(){
+  el('<h2 class="t">Menu</h2><p class="sub">Configurações e ferramentas</p>'+
+    '<button class="listbtn" onclick="go(\'props\')"><span class="bi">⌂</span><div>Propriedades e pluviômetros<div class="d">Adicionar, renomear e selecionar</div></div></button>'+
+    '<button class="listbtn" onclick="go(\'avancado\')"><span class="bi">⤓</span><div>Backup e exportação<div class="d">Exportar, importar e fazer cópia de segurança</div></div></button>');
+}
+function viewAvancado(){
+  el(backbar('menu')+'<h2 class="t">Backup e exportação</h2><p class="sub">Ferramentas avançadas</p>'+
+    '<button class="listbtn" onclick="go(\'import\')"><span class="bi">⤒</span><div>Importar vários dias de uma vez<div class="d">Colar ou CSV — ex.: anos do BoosterAgro</div></div></button>'+
+    '<button class="listbtn" onclick="exportXLSX()"><span class="bi">▦</span><div>Exportar planilha (.xlsx)<div class="d">Do pluviômetro selecionado</div></div></button>'+
+    '<button class="listbtn" onclick="exportCSV()"><span class="bi">≡</span><div>Exportar CSV<div class="d">Todos os pluviômetros</div></div></button>'+
+    '<button class="listbtn" onclick="exportJSON()"><span class="bi">❮❯</span><div>Backup completo (JSON)<div class="d">Todas as propriedades e leituras</div></div></button>'+
+    '<label class="listbtn" style="cursor:pointer"><span class="bi">↥</span><div>Importar backup (JSON)<div class="d">Restaura de um arquivo</div></div><input type="file" accept="application/json" style="display:none" onchange="importJSON(event)"></label>'+
+    '<div class="note" style="margin:2px 0 16px"><span class="bi">ℹ︎</span><span>No app final, a planilha sobe automática para o Dropbox da propriedade. No protótipo, baixa no aparelho.</span></div>'+
+    '<button class="listbtn" style="color:var(--amber-ink);border-color:#E9C77E" onclick="wipeAll()"><span class="bi" style="color:var(--amber)">⟲</span><div>Apagar tudo e recomeçar<div class="d">Remove todas as propriedades e leituras</div></div></button>');
+}
+function wipeAll(){ if(!confirm('Apagar TODAS as propriedades, pluviômetros e lançamentos?'))return; localStorage.removeItem('pp.v2.farms'); localStorage.removeItem('pp.v2.sel'); localStorage.removeItem('pp.v2.readings'); farms=[];sel={};readings={}; seed(); go('inicio'); showToast('Recomeçado do zero'); }
+
+/* ===== TELA: Importar (colar / CSV) ===== */
+function viewImport(){
+  el(backbar('avancado')+'<h2 class="t">Importar dados</h2>'+
+    '<p class="sub">Vai para o pluviômetro: <b>'+esc(curGauge()?curGauge().nome:'')+'</b></p>'+
+    '<div class="note" style="margin-bottom:12px"><span class="bi">ℹ︎</span><span>Cole uma linha por dia, com a <b>data</b> e a <b>chuva em mm</b>. Aceita <code>15/01/2024 12,5</code>, <code>2024-01-15;12,5</code> ou colado de planilha (data e valor).</span></div>'+
+    '<textarea id="impText" placeholder="15/01/2024  12,5&#10;16/01/2024  0&#10;17/01/2024  8,5" style="width:100%;height:170px;border:1.5px solid var(--line2);border-radius:14px;padding:12px;font-size:16px;font-family:monospace;background:var(--card);color:var(--ink);resize:vertical"></textarea>'+
+    '<button class="bigbtn" style="margin-top:12px" onclick="doImportText()"><span class="bi">⤒</span><div>Importar texto colado</div></button>'+
+    '<label class="listbtn" style="cursor:pointer;margin-top:12px"><span class="bi">▤</span><div>Ou enviar arquivo CSV<div class="d">Colunas com data e mm</div></div><input type="file" accept=".csv,.txt,text/csv,text/plain" style="display:none" onchange="doImportFile(event)"></label>'+
+    '<div id="impResult" style="margin-top:10px"></div>');
+}
+function parseRows(text){
+  const lines=String(text).split(/\r?\n/); const rows=[]; let ignored=0;
+  for(const raw of lines){
+    const line=raw.trim(); if(!line) continue;
+    let y,mo,d,used=null;
+    let m=line.match(/(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
+    if(m){ y=+m[1];mo=+m[2];d=+m[3];used=m[0]; }
+    else { m=line.match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/); if(m){ d=+m[1];mo=+m[2];y=+m[3]; if(y<100)y+=2000; used=m[0]; } }
+    if(!used){ ignored++; continue; }
+    const idx=line.indexOf(used);
+    let nm=line.slice(idx+used.length).match(/-?\d+(?:[.,]\d+)?/);
+    if(!nm) nm=line.slice(0,idx).match(/-?\d+(?:[.,]\d+)?/);
+    if(!nm){ ignored++; continue; }
+    const mm=parseFloat(nm[0].replace(',','.'));
+    if(isNaN(mm)||mm<0||mo<1||mo>12||d<1||d>31){ ignored++; continue; }
+    rows.push({k:iso(y,mo,d),mm:Math.round(mm*10)/10});
+  }
+  return {rows,ignored};
+}
+function applyImport(text){
+  const r=parseRows(text), box=document.getElementById('impResult');
+  if(!r.rows.length){ if(box)box.innerHTML='<div class="note amber"><span class="bi">⚠︎</span><span>Nenhuma linha reconhecida. Confira: cada linha precisa ter uma <b>data</b> e um <b>número (mm)</b>.</span></div>'; return; }
+  const map=R(); r.rows.forEach(x=>{ map[x.k]=x.mm; }); anoYear=latestDataYear(); persist();
+  const yrs=Array.from(new Set(r.rows.map(x=>x.k.slice(0,4)))).sort();
+  if(box)box.innerHTML='<div class="note"><span class="bi">✓</span><span><b>'+r.rows.length+'</b> dia(s) importados'+(r.ignored?' · '+r.ignored+' linha(s) ignoradas':'')+'. Anos: '+yrs.join(', ')+'.</span></div>'+
+    '<button class="bigbtn" style="margin-top:10px" onclick="go(\'ano\')"><span class="bi">▥</span><div>Ver na Análise</div></button>';
+  showToast(r.rows.length+' dias importados');
+}
+function doImportText(){ const t=document.getElementById('impText'); applyImport(t?t.value:''); }
+function doImportFile(ev){ const f=ev.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=function(){ applyImport(String(r.result)); }; r.readAsText(f); }
+
+/* ===== teclado de lançamento ===== */
+function openSheetAt(y,m,d){ cursor={y:y,m:m,d:d}; const v=rd(y,m,d); kp=(v===undefined||v===0)?'':num(v).replace('.',','); openSheet(); }
+function goToday(){ const t=today(); openSheetAt(t.y,t.m,t.d); }
+function openSheet(){
+  const y=cursor.y,m=cursor.m,d=cursor.d, _n=new Date();
+  const dd=(d===_n.getDate()&&m===_n.getMonth()+1&&y===_n.getFullYear());
+  const wd=WK[new Date(y,m-1,d).getDay()][1];
+  document.getElementById('sheetbox').innerHTML=
+    '<div class="sheethead"><span class="gname">'+esc(curGauge()?curGauge().nome:'Lançar chuva')+'</span><button onclick="closeSheet()" style="background:var(--card);border:1.5px solid var(--line2);color:var(--ink);border-radius:22px;padding:9px 18px;font-size:16px;font-weight:600;cursor:pointer">✕ Fechar</button></div>'+
+    '<div class="datenav"><button class="arrow" onclick="moveDate(-1)" aria-label="dia anterior">‹</button>'+
+      '<div class="d">'+wd+', '+pad(d)+' '+MESA[m-1]+' '+y+(dd?' · HOJE':'')+'</div>'+
+      '<button class="arrow" onclick="moveDate(1)" aria-label="próximo dia">›</button></div>'+
+    (dd?'':'<div style="text-align:center;margin:-2px 0 10px"><button class="pill" onclick="goToday()">↩ Ir para hoje</button></div>')+
+    '<div class="disp"><span class="n" id="kpDisp">'+(kp||'0')+'</span><span class="u"> mm</span></div>'+
+    '<div class="keys">'+[1,2,3,4,5,6,7,8,9].map(n=>'<button class="key" onclick="kpf(\''+n+'\')">'+n+'</button>').join('')+
+      '<button class="key" onclick="kpf(\',\')">,</button><button class="key" onclick="kpf(\'0\')">0</button><button class="key" onclick="kpf(\'del\')" aria-label="apagar">⌫</button></div>'+
+    '<div class="acts"><button class="btn-sun" onclick="kpf(\'sun\')">☀ Sem chuva</button><button class="btn-ok" onclick="kpf(\'ok\')">✓ Salvar</button></div>'+
+    '<button onclick="closeSheet()" style="width:100%;margin-top:10px;height:52px;border:1.5px solid var(--line2);background:var(--card);color:var(--ink2);border-radius:15px;font-size:16px;font-weight:600;cursor:pointer">Fechar sem lançar</button>';
+  document.getElementById('sheet').classList.add('open');
+}
+function closeSheet(){ document.getElementById('sheet').classList.remove('open'); kp=''; render(); }
+function moveDate(delta){ let dt=new Date(cursor.y,cursor.m-1,cursor.d); dt.setDate(dt.getDate()+delta); cursor={y:dt.getFullYear(),m:dt.getMonth()+1,d:dt.getDate()}; const v=rd(cursor.y,cursor.m,cursor.d); kp=(v===undefined||v===0)?'':num(v).replace('.',','); openSheet(); }
+function commitVal(v){ const key=iso(cursor.y,cursor.m,cursor.d); lastAction={key:key,gauge:sel.gauge,prev:R()[key]}; R()[key]=v; persist(); }
+function kpf(k){
+  if(k==='del'){ kp=kp.length>1?kp.slice(0,-1):''; }
+  else if(k==='sun'){ commitVal(0); closeSheet(); showToast('Lançado 0 mm (sem chuva) em '+pad(cursor.d)+'/'+pad(cursor.m)); return; }
+  else if(k==='ok'){ const v=parseFloat((kp||'0').replace(',','.'))||0; if(v>250&&!confirm('Confirmar '+num(v)+' mm em um dia?'))return; commitVal(v); closeSheet(); showToast('Lançado '+num(v)+' mm em '+pad(cursor.d)+'/'+pad(cursor.m)); return; }
+  else if(k===','){ if(kp.indexOf(',')<0) kp=(kp||'0')+','; }
+  else { kp=(kp==='0'?'':kp)+k; }
+  const e=document.getElementById('kpDisp'); if(e)e.textContent=kp||'0';
+}
+
+/* ===== toast / undo ===== */
+let toastT=null;
+function showToast(msg){ const t=document.getElementById('toast'); t.innerHTML=msg+' <button onclick="undo()">Desfazer</button>'; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),4500); }
+function undo(){ if(!lastAction)return; const r=readings[lastAction.gauge]||{}; if(lastAction.prev===undefined) delete r[lastAction.key]; else r[lastAction.key]=lastAction.prev; persist(); lastAction=null; document.getElementById('toast').classList.remove('show'); render(); }
+
+/* ===== exportação ===== */
+function slug(s){ return String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'').replace(/^_+|_+$/g,'') || 'Pluviometro'; }
+function dl(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); }
+function gradeAOA(year){
+  const A=[['Precipitações Pluviométricas'],[ (curFarm()?curFarm().nome:'')+'  ·  '+(curGauge()?curGauge().nome:'')+'   Ano: '+year ],[],['Dia'].concat(MESA)];
+  const tot=Array(12).fill(0), has=Array(12).fill(false);
+  for(let d=1;d<=31;d++){ const row=[d]; for(let m=1;m<=12;m++){ if(d>dim(year,m)){row.push('');continue;} const v=rd(year,m,d); if(v===undefined){row.push('');} else {row.push(v); tot[m-1]+=v; has[m-1]=true;} } A.push(row); }
+  A.push(['Total'].concat(tot.map((t,i)=>has[i]?Math.round(t*10)/10:''))); A.push([]); A.push(['Total do ano:','',Math.round(tot.reduce((a,b)=>a+b,0)*10)/10]);
+  return A;
+}
+function mediasAOA(){ const A=[['PROEST - Consultoria Agrícola'],[curFarm()?curFarm().nome:''],['Pluviômetro: '+(curGauge()?curGauge().nome:'')],[],['Ano'].concat(MESU).concat(['Total'])];
+  for(const y of yearsWithData()){ const row=[y]; let s=0,has=false; for(let m=1;m<=12;m++){ const v=monthTotal(y,m); row.push(v==null?'':v); if(v!=null){s+=v;has=true;} } row.push(has?Math.round(s*10)/10:''); A.push(row); } return A; }
+function diasAOA(){ const A=[['Número de Dias Com Chuva'],[],['Ano'].concat(MESU)]; for(const y of yearsWithData()){ const row=[y]; for(let m=1;m<=12;m++){ const a=monthAgg(y,m); row.push(a.med>0?a.dias:''); } A.push(row); } return A; }
+function exportXLSX(){ const yrs=yearsWithData(); if(!yrs.length){ alert('Este pluviômetro ainda não tem lançamentos para exportar.'); return; }
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(mediasAOA()),'Médias'); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(diasAOA()),'Dias Com Chuva');
+  yrs.forEach(y=>XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(gradeAOA(y)),String(y)));
+  XLSX.writeFile(wb,'Pluviometria_'+slug(curFarm()?curFarm().nome:'')+'_'+slug(curGauge()?curGauge().nome:'')+'.xlsx'); showToast('Planilha .xlsx gerada'); }
+function exportCSV(){ let s='propriedade,pluviometro,latitude,longitude,data,mm\n'; farms.forEach(f=>(f.gauges||[]).forEach(g=>{ const map=readings[g.id]||{}; const la=(g.lat!=null?g.lat:''), ln=(g.lng!=null?g.lng:''); Object.keys(map).sort().forEach(k=>{ s+='"'+f.nome.replace(/"/g,'""')+'","'+g.nome.replace(/"/g,'""')+'",'+la+','+ln+','+k+','+map[k]+'\n'; }); })); dl(new Blob(['﻿'+s],{type:'text/csv;charset=utf-8'}),'Pluviometria_export.csv'); showToast('CSV gerado'); }
+function exportJSON(){ const obj={schema:'proest.pluviometria/v2',exportado_em:new Date().toISOString(),farms:farms,readings:readings}; dl(new Blob([JSON.stringify(obj,null,2)],{type:'application/json'}),'backup_pluviometria.json'); showToast('Backup JSON gerado'); }
+function importJSON(ev){ const f=ev.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=function(){ try{ const o=JSON.parse(r.result); if(o.farms&&o.readings){
+      o.farms.forEach(function(nf){ const ex=findFarm(nf.id);
+        if(ex){ ex.nome=nf.nome; (nf.gauges||[]).forEach(function(ng){ const eg=ex.gauges.find(x=>x.id===ng.id); if(eg)Object.assign(eg,ng); else ex.gauges.push(ng); }); }
+        else farms.push(nf); });
+      Object.assign(readings,o.readings);
+      const last=o.farms[o.farms.length-1]; if(last&&last.gauges&&last.gauges[0]) sel={farm:last.id,gauge:last.gauges[0].id};
+      if(!findGauge(sel.gauge))selectFirst(); const _t=today(); calY=_t.y;calM=_t.m; anoYear=latestDataYear(); persist(); showToast('Dados importados (mesclados)'); go('inicio');
+    } else alert('Formato não reconhecido.'); }catch(e){ alert('Arquivo inválido'); } }; r.readAsText(f); }
+
+/* ===== roteador / tabs ===== */
+const TABS=[['inicio','M3 12l9-9 9 9M5 10v9a1 1 0 001 1h12a1 1 0 001-1v-9','Início'],
+            ['cal','M4 5h16v15H4zM4 9h16M8 3v4M16 3v4','Calendário'],
+            ['lancar','','Lançar'],
+            ['ano','M5 19V9M12 19V5M19 19v-7','Análise'],
+            ['menu','M4 6h16M4 12h16M4 18h16','Menu']];
+function ic(p){ return '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="'+p+'"/></svg>'; }
+function buildTabs(){ const t=document.getElementById('tabs'); t.innerHTML='';
+  TABS.forEach(tb=>{ const b=document.createElement('button');
+    if(tb[0]==='lancar'){ b.className='fab'; b.innerHTML='＋'; b.onclick=()=>{ const x=today(); openSheetAt(x.y,x.m,x.d); }; b.setAttribute('aria-label','Lançar'); }
+    else { const on=(view===tb[0]||(tb[0]==='menu'&&(view==='props'||view==='avancado'||view==='import'))); b.className=on?'on':''; b.innerHTML=ic(tb[1])+'<span class="lab">'+tb[2]+'</span>'; b.onclick=()=>go(tb[0]); }
+    t.appendChild(b); }); }
+function go(v){ view=v; render(); }
+function render(){ const fg=findGauge(sel.gauge); document.getElementById('stationName').textContent=fg?(fg.farm.nome+' · '+fg.gauge.nome):'—'; buildTabs();
+  if(view==='inicio')viewInicio(); else if(view==='cal')viewCal(); else if(view==='ano')viewAno(); else if(view==='props')viewProps(); else if(view==='menu')viewMenu(); else if(view==='avancado')viewAvancado(); else if(view==='import')viewImport(); }
+document.getElementById('sheet').addEventListener('click',function(e){ if(e.target.id==='sheet') closeSheet(); });
+
+/* boot */
+seed(); const _t=today(); cursor=_t; calY=_t.y; calM=_t.m; anoYear=_t.y; render();
+</script>
+</body>
+</html>
