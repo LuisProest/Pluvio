@@ -438,7 +438,7 @@ function importJSON(ev){ const f=ev.target.files[0]; if(!f)return; const r=new F
       o.farms.forEach(function(nf){ const ex=findFarm(nf.id);
         if(ex){ ex.nome=nf.nome; (nf.gauges||[]).forEach(function(ng){ const eg=ex.gauges.find(x=>x.id===ng.id); if(eg)Object.assign(eg,ng); else ex.gauges.push(ng); }); }
         else farms.push(nf); });
-      Object.assign(readings,o.readings);
+      for(var _g in o.readings){ readings[_g]=Object.assign(readings[_g]||{}, o.readings[_g]); }
       const last=o.farms[o.farms.length-1]; if(last&&last.gauges&&last.gauges[0]) sel={farm:last.id,gauge:last.gauges[0].id};
       if(!findGauge(sel.gauge))selectFirst(); const _t=today(); calY=_t.y;calM=_t.m; anoYear=latestDataYear(); persist(); showToast('Dados importados (mesclados)'); go('inicio');
     } else alert('Formato não reconhecido.'); }catch(e){ alert('Arquivo inválido'); } }; r.readAsText(f); }
