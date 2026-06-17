@@ -15,11 +15,11 @@
     --ink:#0c2236; --ink2:#4A5C6B; --ink3:#8294A2;
     --rain:#1E73B8; --rain-d:#0E4C82; --rain-50:#EAF4FB; --rain-200:#A9D3EE; --rain-400:#4BA3DC; --rain-900:#0B3F6E;
     --amber:#D9821F; --amber-bg:#FAEEDA; --amber-ink:#7A4708;
-    --soja:#4F9326; --nodata:#ECE7DA;
+    --soja:#4F9326; --nodata:#ECE7DA; --proest:#ED6A0C;
   }
   @media (prefers-color-scheme: dark){
     :root{ --bg:#0a1622; --card:#13263d; --line:#22405e; --line2:#2c4a68;
-      --ink:#f2f7fc; --ink2:#b3c6d8; --ink3:#7e96ac; --rain-50:#16364f; --nodata:#1d3349; }
+      --ink:#f2f7fc; --ink2:#b3c6d8; --ink3:#7e96ac; --rain-50:#16364f; --nodata:#1d3349; --proest:#FF8A2E; }
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%}
@@ -66,9 +66,11 @@
   .wk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;margin-bottom:6px}
   .wk span{text-align:center;font-size:13px;font-weight:600;color:var(--ink3)}
   .cgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
-  .day{height:56px;min-width:0;overflow:hidden;border:1.5px solid var(--line);border-radius:12px;background:var(--card);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px}
-  .day .dn{font-size:16px;font-weight:600;line-height:1}
-  .day .dv{font-size:14px;font-weight:700;line-height:1.1;margin-top:2px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .day{position:relative;height:62px;min-width:0;overflow:hidden;border:1.5px solid var(--line);border-radius:12px;background:var(--card);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+  .day .dn{position:absolute;top:4px;left:6px;font-size:12px;font-weight:600;color:var(--ink3);line-height:1}
+  .day .dv{font-size:17px;font-weight:700;line-height:1;max-width:100%;overflow:hidden;white-space:nowrap;padding:0 2px}
+  .day .dv0{font-size:15px;font-weight:600;color:var(--ink3)}
+  .day .bar{position:absolute;left:0;right:0;bottom:0;height:5px}
   .day.empty{visibility:hidden}
   .day.today{box-shadow:0 0 0 3px var(--rain-d);border-color:var(--rain-d)}
   .monthgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:11px}
@@ -166,6 +168,7 @@ function pendingDays(y,m,upto){ const out=[]; const last=Math.min(upto||dim(y,m)
 
 function cDay(v){ if(v==null)return null; if(v===0)return {bg:'var(--rain-50)',fg:'var(--ink2)'}; if(v<=5)return {bg:'var(--rain-200)',fg:'var(--rain-900)'}; if(v<=15)return {bg:'var(--rain-400)',fg:'#fff'}; if(v<=30)return {bg:'var(--rain)',fg:'#fff'}; return {bg:'var(--rain-900)',fg:'#fff'}; }
 function cMon(v){ if(v==null)return 'var(--nodata)'; if(v<=10)return 'var(--rain-50)'; if(v<=60)return 'var(--rain-200)'; if(v<=150)return 'var(--rain-400)'; if(v<=280)return 'var(--rain)'; return 'var(--rain-900)';}
+function cellBg(v){ if(v==null)return 'var(--card)'; if(v===0)return 'var(--rain-50)'; if(v<=5)return 'var(--rain-200)'; if(v<=15)return 'var(--rain-400)'; if(v<=30)return 'var(--rain)'; return 'var(--rain-900)';}
 
 /* ===== navegação ===== */
 let view='inicio', calY=today().y, calM=today().m, anoYear=today().y, anoMode='ano';
@@ -209,23 +212,19 @@ function viewCal(){
   g+='<div class="cgrid">';
   for(let i=0;i<first;i++) g+='<div class="day empty"></div>';
   for(let d=1;d<=nd;d++){
-    const v=rd(calY,calM,d); const c=cDay(v===undefined?null:v);
+    const v=rd(calY,calM,d);
     const isToday=(calY===t.y&&calM===t.m&&d===t.d);
-    const style=c?('background:'+c.bg+';border-color:'+c.bg+';color:'+c.fg):'';
-    const dv=(v===undefined)?'':(v===0?'•':num(v));
-    g+='<button class="day'+(isToday?' today':'')+'" style="'+style+'" onclick="openSheetAt('+calY+','+calM+','+d+')">'+
-       '<span class="dn">'+d+'</span>'+(dv!==''?'<span class="dv">'+dv+'</span>':'')+'</button>';
+    const has=(v!==undefined), dark=has&&v>15;
+    const bg=cellBg(has?v:null), txt=dark?'#ffffff':'#0B3F6E', dcol=dark?'rgba(255,255,255,.75)':'#5A6B7B';
+    let dvHtml=''; if(has){ dvHtml = v>0 ? '<span class="dv" style="color:'+txt+'">'+num(v)+'</span>' : '<span class="dv0" style="color:'+(dark?'rgba(255,255,255,.7)':'#8294A2')+'">0</span>'; }
+    g+='<button class="day'+(isToday?' today':'')+'" style="background:'+bg+';border-color:'+(has?bg:'var(--line)')+'" onclick="openSheetAt('+calY+','+calM+','+d+')">'+
+       '<span class="dn" style="color:'+dcol+'">'+d+'</span>'+dvHtml+'</button>';
   }
   g+='</div>';
   const a=monthAgg(calY,calM);
   g+='<div class="row" style="margin-top:14px">'+mcard('Total do mês', a.total!=null?num(a.total):'0','mm')+mcard('Dias com chuva', a.dias,'')+mcard('Lançados', a.med+'/'+nd,'dias')+'</div>';
-  g+='<div class="legend"><span><i class="sw" style="background:var(--card);border:1.5px solid var(--line)"></i>sem lançar</span>'+
-     '<span><i class="sw" style="background:var(--rain-50)"></i>0 (•)</span>'+
-     '<span><i class="sw" style="background:var(--rain-200)"></i>fraca</span>'+
-     '<span><i class="sw" style="background:var(--rain-400)"></i>média</span>'+
-     '<span><i class="sw" style="background:var(--rain)"></i>forte</span>'+
-     '<span><i class="sw" style="background:var(--rain-900)"></i>muito forte</span></div>'+
-     '<div class="note" style="margin-top:12px"><span class="bi">＋</span><span>Toque em qualquer dia para lançar. O número dentro é a chuva em mm.</span></div>';
+  g+='<div class="note" style="margin-top:14px"><span class="bi">＋</span><span>Toque num dia para lançar. O número é a chuva (mm); o pequeno no canto é o dia. A cor da célula mostra a intensidade.</span></div>'+
+     '<div class="legend"><span>Intensidade:</span><span><i class="sw" style="background:var(--rain-50)"></i>0</span><span><i class="sw" style="background:var(--rain-200)"></i>fraca</span><span><i class="sw" style="background:var(--rain-400)"></i>média</span><span><i class="sw" style="background:var(--rain)"></i>forte</span><span><i class="sw" style="background:var(--rain-900)"></i>muito forte</span></div>';
   el(g);
 }
 function bumpMonth(delta){ let mm=calM-1+delta, yy=calY; while(mm<0){mm+=12;yy--;} while(mm>11){mm-=12;yy++;} calM=mm+1; calY=yy; viewCal(); }
@@ -269,12 +268,23 @@ function viewAno(){
       (hasLine?'<div class="legend"><span><i class="sw" style="background:var(--rain)"></i>acima da sua média</span><span><i class="sw" style="background:var(--amber)"></i>abaixo</span><span><i class="sw" style="width:18px;height:0;border-top:2px dashed var(--ink2)"></i>sua média</span></div>'
               :'<div class="note" style="margin-top:10px"><span class="bi">ℹ︎</span><span>Com 2+ anos de dados, aparece aqui a sua média mensal para comparação.</span></div>')+'</div>';
   } else {
-    g+='<p class="sub">Total mensal (mm) · seus dados, ano a ano</p>';
-    g+='<div style="display:grid;grid-template-columns:40px repeat(12,minmax(0,1fr));gap:3px;align-items:center"><span></span>';
-    for(let m=0;m<12;m++) g+='<span style="font-size:12px;font-weight:600;text-align:center;color:var(--ink3)">'+MESU[m][0]+'</span>';
-    for(const y of yrs){ g+='<span style="font-size:13px;font-weight:600;color:var(--ink2)">'+y+'</span>';
-      for(let m=1;m<=12;m++){ const v=monthTotal(y,m); g+='<span style="height:22px;border-radius:3px;background:'+cMon(v)+'" title="'+MESU[m-1]+' '+y+': '+(v==null?'sem dado':num(v)+' mm')+'"></span>'; } }
-    g+='</div><div class="legend"><span><i class="sw" style="background:var(--nodata)"></i>sem dado</span><span><i class="sw" style="background:var(--rain-50)"></i>seco</span><span><i class="sw" style="background:var(--rain-400)"></i>médio</span><span><i class="sw" style="background:var(--rain-900)"></i>muito chuvoso</span></div>';
+    g+='<p class="sub">Chuva por mês (mm) · seus dados, ano a ano</p>';
+    const th='padding:9px 7px;font-weight:600;color:var(--ink2)';
+    const sticky='position:sticky;left:0;background:var(--bg)';
+    g+='<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:14px;min-width:'+(64+yrs.length*52+58)+'px;width:100%">';
+    g+='<tr><th style="text-align:left;'+th+';'+sticky+'">Mês</th>';
+    for(const y of yrs) g+='<th style="text-align:right;'+th+'">'+y+'</th>';
+    g+='<th style="text-align:right;'+th+';color:var(--rain-d)">Média</th></tr>';
+    for(let m=1;m<=12;m++){
+      g+='<tr style="border-top:1px solid var(--line)"><td style="text-align:left;padding:9px 7px;font-weight:600;color:var(--ink);'+sticky+'">'+MESA[m-1]+'</td>';
+      for(const y of yrs){ const v=monthTotal(y,m); g+='<td style="text-align:right;padding:9px 7px;color:var(--ink)">'+(v==null?'·':num(v))+'</td>'; }
+      const cn=clientNormalMonth(m); g+='<td style="text-align:right;padding:9px 7px;color:var(--rain-d);font-weight:600">'+(cn==null?'—':num(cn))+'</td></tr>';
+    }
+    g+='<tr style="border-top:2px solid var(--line2)"><td style="text-align:left;padding:9px 7px;font-weight:700;'+sticky+'">Total</td>';
+    for(const y of yrs){ const tt=yearAgg(y).total; g+='<td style="text-align:right;padding:9px 7px;font-weight:700;color:var(--ink)">'+(tt==null?'·':num(tt))+'</td>'; }
+    const cny=clientNormalYear(); g+='<td style="text-align:right;padding:9px 7px;font-weight:700;color:var(--rain-d)">'+(cny==null?'—':num(cny))+'</td></tr>';
+    g+='</table></div>';
+    g+='<div class="note" style="margin-top:12px"><span class="bi">ℹ︎</span><span>Cada coluna é um ano. A coluna <b style="color:var(--rain-d)">Média</b> é a sua média mensal (com 2+ anos). "·" = mês sem dados.</span></div>';
   }
   el(g);
 }
