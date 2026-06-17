@@ -210,14 +210,14 @@ function viewCal(){
   g+='<div class="wk">'+WK.map(w=>'<span title="'+w[1]+'">'+w[0]+'</span>').join('')+'</div>';
   const first=new Date(calY,calM-1,1).getDay(), nd=dim(calY,calM);
   g+='<div class="cgrid">';
-  for(let i=0;i<first;i++) g+='<div aria-hidden="true"></div>';
+  /* dia 1 vai direto para sua coluna (grid-column-start); sem células vazias */
   for(let d=1;d<=nd;d++){
     const v=rd(calY,calM,d);
     const isToday=(calY===t.y&&calM===t.m&&d===t.d);
     const has=(v!==undefined), dark=has&&v>15;
     const bg=cellBg(has?v:null), txt=dark?'#ffffff':'#0B3F6E', dcol=dark?'rgba(255,255,255,.75)':'#5A6B7B';
     let dvHtml=''; if(has){ dvHtml = v>0 ? '<span class="dv" style="color:'+txt+'">'+num(v)+'</span>' : '<span class="dv0" style="color:'+(dark?'rgba(255,255,255,.7)':'#8294A2')+'">0</span>'; }
-    g+='<button class="day'+(isToday?' today':'')+'" style="background:'+bg+';border-color:'+(has?bg:'var(--line)')+'" onclick="openSheetAt('+calY+','+calM+','+d+')">'+
+    g+='<button class="day'+(isToday?' today':'')+'" style="'+(d===1?'grid-column-start:'+(first+1)+';':'')+'background:'+bg+';border-color:'+(has?bg:'var(--line)')+'" onclick="openSheetAt('+calY+','+calM+','+d+')">'+
        '<span class="dn" style="color:'+dcol+'">'+d+'</span>'+dvHtml+'</button>';
   }
   g+='</div>';
@@ -333,7 +333,8 @@ function locGauge(gid){ const r=findGauge(gid); if(!r)return; const cur=(r.gauge
 function viewMenu(){
   el('<h2 class="t">Menu</h2><p class="sub">Configurações e ferramentas</p>'+
     '<button class="listbtn" onclick="go(\'props\')"><span class="bi">⌂</span><div>Propriedades e pluviômetros<div class="d">Adicionar, renomear e selecionar</div></div></button>'+
-    '<button class="listbtn" onclick="go(\'avancado\')"><span class="bi">⤓</span><div>Backup e exportação<div class="d">Exportar, importar e fazer cópia de segurança</div></div></button>');
+    '<button class="listbtn" onclick="go(\'avancado\')"><span class="bi">⤓</span><div>Backup e exportação<div class="d">Exportar, importar e fazer cópia de segurança</div></div></button>'+
+    '<div style="text-align:center;color:var(--ink3);font-size:12px;margin-top:20px">PROEST Pluviometria · versão 17/06 — calendário alinhado</div>');
 }
 function viewAvancado(){
   el(backbar('menu')+'<h2 class="t">Backup e exportação</h2><p class="sub">Ferramentas avançadas</p>'+
