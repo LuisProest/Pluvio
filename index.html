@@ -210,7 +210,7 @@ function viewCal(){
   g+='<div class="wk">'+WK.map(w=>'<span title="'+w[1]+'">'+w[0]+'</span>').join('')+'</div>';
   const first=new Date(calY,calM-1,1).getDay(), nd=dim(calY,calM);
   g+='<div class="cgrid">';
-  for(let i=0;i<first;i++) g+='<div class="day empty"></div>';
+  for(let i=0;i<first;i++) g+='<div aria-hidden="true"></div>';
   for(let d=1;d<=nd;d++){
     const v=rd(calY,calM,d);
     const isToday=(calY===t.y&&calM===t.m&&d===t.d);
