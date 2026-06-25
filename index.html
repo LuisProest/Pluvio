@@ -348,7 +348,7 @@ function viewMenu(){
     '<button class="listbtn" onclick="go(\'props\')"><span class="bi">⌂</span><div>Propriedades e pluviômetros<div class="d">Adicionar, renomear e selecionar</div></div></button>'+
     '<button class="listbtn" onclick="go(\'avancado\')"><span class="bi">⤓</span><div>Backup e exportação<div class="d">Exportar, importar e fazer cópia de segurança</div></div></button>'+
     '<button class="listbtn" onclick="doLogout()"><span class="bi">⎋</span><div>Sair da conta<div class="d">'+(authUser?esc(authUser.email):'')+'</div></div></button>'+
-    '<div style="text-align:center;color:var(--ink3);font-size:12px;margin-top:20px">PROEST Pluviometria · versão 17/06-e — login e nuvem</div>');
+    '<div style="text-align:center;color:var(--ink3);font-size:12px;margin-top:20px">PROEST Pluviometria · versão 17/06-f — sem desfazer</div>');
 }
 function viewAvancado(){
   el(backbar('menu')+'<h2 class="t">Backup e exportação</h2><p class="sub">Ferramentas avançadas</p>'+
@@ -437,7 +437,7 @@ function kpf(k){
 
 /* ===== toast / undo ===== */
 let toastT=null;
-function showToast(msg){ const t=document.getElementById('toast'); t.innerHTML=msg+' <button onclick="undo()">Desfazer</button>'; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),4500); }
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2600); }
 function undo(){ if(!lastAction)return; const r=readings[lastAction.gauge]||{}; if(lastAction.prev===undefined) delete r[lastAction.key]; else r[lastAction.key]=lastAction.prev; persist(); lastAction=null; document.getElementById('toast').classList.remove('show'); render(); }
 
 /* ===== exportação ===== */
