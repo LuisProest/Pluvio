@@ -9,6 +9,7 @@
 <meta name="theme-color" content="#1E73B8" />
 <title>PROEST Pluviometria</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
   :root{
     --bg:#FBF8F2; --card:#ffffff; --line:#E7E0D2; --line2:#D9D1BF;
@@ -113,17 +114,27 @@
   .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;font-size:15px;padding:13px 20px;border-radius:26px;display:flex;gap:16px;align-items:center;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none;font-weight:500}
   .toast.show{opacity:1;pointer-events:auto}
   .toast button{background:none;border:none;color:#8fc8ff;font-weight:700;cursor:pointer;font-size:15px}
+  #auth{position:fixed;inset:0;background:var(--bg);display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;z-index:80}
+  .authbox{width:100%;max-width:380px}
+  .authlogo{text-align:center;margin-bottom:10px}
+  .authlogo .t{font-size:25px;font-weight:700;color:var(--rain)}
+  .authlogo .s{font-size:15px;color:var(--ink2);margin-top:2px}
+  .authbox input{width:100%;height:54px;border:1.5px solid var(--line2);border-radius:14px;padding:0 14px;font-size:17px;background:var(--card);color:var(--ink);margin-top:12px}
+  .authbox button.primary{width:100%;height:56px;border:none;border-radius:14px;background:var(--rain);color:#fff;font-size:18px;font-weight:700;cursor:pointer;margin-top:16px}
+  .authbox .link{text-align:center;margin-top:18px;font-size:15px;color:var(--rain-d);cursor:pointer;font-weight:600}
+  .authbox .err{color:#c0392b;font-size:14px;margin-top:12px;text-align:center;min-height:18px;font-weight:500}
 </style>
 </head>
 <body>
 <div id="app">
   <div id="top">
     <button class="pill" id="stationPill" onclick="go('props')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 21s-7-6.7-7-12a7 7 0 0114 0c0 5.3-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/></svg><span id="stationName">—</span><span style="opacity:.6">▾</span></button>
-    <button class="topbtn" onclick="go('menu')" aria-label="Menu">≡</button>
+    <div style="display:flex;align-items:center;gap:10px"><span id="syncDot" style="font-size:18px;color:var(--ink3)" aria-hidden="true"></span><button class="topbtn" onclick="go('menu')" aria-label="Menu">≡</button></div>
   </div>
   <div id="screen"></div>
   <div id="tabs"></div>
 </div>
+<div id="auth"></div>
 <div id="sheet"><div class="sheetbox" id="sheetbox"></div></div>
 <div class="toast" id="toast"></div>
 
@@ -144,7 +155,8 @@ function today(){const n=new Date();return {y:n.getFullYear(),m:n.getMonth()+1,d
 function num(n){ return (Math.round(n*10)/10).toLocaleString('pt-BR'); }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
-function persist(){ try{ localStorage.setItem('pp.v2.farms',JSON.stringify(farms)); localStorage.setItem('pp.v2.sel',JSON.stringify(sel)); localStorage.setItem('pp.v2.readings',JSON.stringify(readings)); }catch(e){} }
+function saveLocal(){ try{ localStorage.setItem('pp.v2.farms',JSON.stringify(farms)); localStorage.setItem('pp.v2.sel',JSON.stringify(sel)); localStorage.setItem('pp.v2.readings',JSON.stringify(readings)); }catch(e){} }
+function persist(){ saveLocal(); scheduleSync(); }
 function loadLS(){ try{ farms=JSON.parse(localStorage.getItem('pp.v2.farms')||'[]'); sel=JSON.parse(localStorage.getItem('pp.v2.sel')||'{}'); readings=JSON.parse(localStorage.getItem('pp.v2.readings')||'{}'); }catch(e){ farms=[];sel={};readings={}; } }
 function seed(){ loadLS(); if(!farms.length){ const g={id:uid('g'),nome:'Pluviômetro principal'}; farms=[{id:uid('f'),nome:'Minha propriedade',gauges:[g]}]; sel={farm:farms[0].id,gauge:g.id}; readings[g.id]={}; persist(); } if(!findGauge(sel.gauge)) selectFirst(); }
 function findFarm(id){ return farms.find(f=>f.id===id); }
@@ -335,7 +347,8 @@ function viewMenu(){
   el('<h2 class="t">Menu</h2><p class="sub">Configurações e ferramentas</p>'+
     '<button class="listbtn" onclick="go(\'props\')"><span class="bi">⌂</span><div>Propriedades e pluviômetros<div class="d">Adicionar, renomear e selecionar</div></div></button>'+
     '<button class="listbtn" onclick="go(\'avancado\')"><span class="bi">⤓</span><div>Backup e exportação<div class="d">Exportar, importar e fazer cópia de segurança</div></div></button>'+
-    '<div style="text-align:center;color:var(--ink3);font-size:12px;margin-top:20px">PROEST Pluviometria · versão 17/06-d — média no histórico</div>');
+    '<button class="listbtn" onclick="doLogout()"><span class="bi">⎋</span><div>Sair da conta<div class="d">'+(authUser?esc(authUser.email):'')+'</div></div></button>'+
+    '<div style="text-align:center;color:var(--ink3);font-size:12px;margin-top:20px">PROEST Pluviometria · versão 17/06-e — login e nuvem</div>');
 }
 function viewAvancado(){
   el(backbar('menu')+'<h2 class="t">Backup e exportação</h2><p class="sub">Ferramentas avançadas</p>'+
@@ -472,8 +485,125 @@ function render(){ const fg=findGauge(sel.gauge); document.getElementById('stati
   if(view==='inicio')viewInicio(); else if(view==='cal')viewCal(); else if(view==='ano')viewAno(); else if(view==='props')viewProps(); else if(view==='menu')viewMenu(); else if(view==='avancado')viewAvancado(); else if(view==='import')viewImport(); }
 document.getElementById('sheet').addEventListener('click',function(e){ if(e.target.id==='sheet') closeSheet(); });
 
+/* ============ SUPABASE: login + sincronização na nuvem ============ */
+const SB_URL='https://xbeuirzpjzphwyrpjofa.supabase.co';
+const SB_KEY='sb_publishable_dWXK0aSynrFmX5jWgrf1Ig_twalCQMF';
+let sb=null, authUser=null, lastSync=null, syncTimer=null, syncing=false, authMode='login';
+function sbInit(){ if(!sb){ if(!window.supabase||!window.supabase.createClient) return null; sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true}}); } return sb; }
+function setSync(s){ const d=document.getElementById('syncDot'); if(!d)return; if(s==='ok'){d.textContent='☁';d.title='Sincronizado';d.style.color='var(--soja)';} else if(s==='pend'){d.textContent='⟳';d.title='Sincronizando…';d.style.color='var(--amber)';} else {d.textContent='☁';d.title='Offline (dados salvos no aparelho)';d.style.color='var(--ink3)';} }
+
+function flatten(){ const props=[],gauges=[],reads=[]; farms.forEach(function(f){ props.push({id:f.id,nome:f.nome}); (f.gauges||[]).forEach(function(g){ gauges.push({id:g.id,propriedade_id:f.id,nome:g.nome,lat:(g.lat==null?null:g.lat),lng:(g.lng==null?null:g.lng)}); }); }); for(const gid in readings){ const map=readings[gid]||{}; for(const d in map){ reads.push({id:gid+'_'+d,pluviometro_id:gid,data:d,mm:map[d]}); } } return {props,gauges,reads}; }
+function idxOf(arr){ const m={}; arr.forEach(function(x){ m[x.id]=JSON.stringify(x); }); return m; }
+
+async function syncPush(){
+  if(!authUser||!sbInit()||syncing) return;
+  syncing=true; setSync('pend');
+  try{
+    const cur=flatten(), prev=lastSync||{props:[],gauges:[],reads:[]}, uid=authUser.id;
+    const pP=idxOf(prev.props),pG=idxOf(prev.gauges),pR=idxOf(prev.reads), cP=idxOf(cur.props),cG=idxOf(cur.gauges),cR=idxOf(cur.reads);
+    const upP=cur.props.filter(x=>cP[x.id]!==pP[x.id]).map(x=>({id:x.id,nome:x.nome,user_id:uid}));
+    const upG=cur.gauges.filter(x=>cG[x.id]!==pG[x.id]).map(x=>({id:x.id,propriedade_id:x.propriedade_id,nome:x.nome,lat:x.lat,lng:x.lng,user_id:uid}));
+    const upR=cur.reads.filter(x=>cR[x.id]!==pR[x.id]).map(x=>({id:x.id,pluviometro_id:x.pluviometro_id,data:x.data,mm:x.mm,user_id:uid}));
+    const sP=new Set(cur.props.map(x=>x.id)),sG=new Set(cur.gauges.map(x=>x.id)),sR=new Set(cur.reads.map(x=>x.id));
+    const dP=prev.props.filter(x=>!sP.has(x.id)).map(x=>x.id), dG=prev.gauges.filter(x=>!sG.has(x.id)).map(x=>x.id), dR=prev.reads.filter(x=>!sR.has(x.id)).map(x=>x.id);
+    if(dR.length){ const {error}=await sb.from('leituras').delete().in('id',dR); if(error)throw error; }
+    if(dG.length){ const {error}=await sb.from('pluviometros').delete().in('id',dG); if(error)throw error; }
+    if(dP.length){ const {error}=await sb.from('propriedades').delete().in('id',dP); if(error)throw error; }
+    if(upP.length){ const {error}=await sb.from('propriedades').upsert(upP); if(error)throw error; }
+    if(upG.length){ const {error}=await sb.from('pluviometros').upsert(upG); if(error)throw error; }
+    if(upR.length){ const {error}=await sb.from('leituras').upsert(upR); if(error)throw error; }
+    lastSync=cur; setSync('ok');
+  }catch(e){ setSync('off'); }
+  finally{ syncing=false; }
+}
+function scheduleSync(){ if(!authUser)return; clearTimeout(syncTimer); setSync('pend'); syncTimer=setTimeout(syncPush,1200); }
+
+async function pullAll(){
+  const [p,g,r]=await Promise.all([ sb.from('propriedades').select('*'), sb.from('pluviometros').select('*'), sb.from('leituras').select('*') ]);
+  if(p.error||g.error||r.error) throw (p.error||g.error||r.error);
+  const fmap={}; farms=[]; readings={};
+  (p.data||[]).forEach(function(pr){ const f={id:pr.id,nome:pr.nome,gauges:[]}; fmap[pr.id]=f; farms.push(f); });
+  (g.data||[]).forEach(function(gg){ const f=fmap[gg.propriedade_id]; const ga={id:gg.id,nome:gg.nome}; if(gg.lat!=null)ga.lat=gg.lat; if(gg.lng!=null)ga.lng=gg.lng; if(f)f.gauges.push(ga); readings[gg.id]=readings[gg.id]||{}; });
+  (r.data||[]).forEach(function(rr){ readings[rr.pluviometro_id]=readings[rr.pluviometro_id]||{}; readings[rr.pluviometro_id][rr.data]=Number(rr.mm); });
+  lastSync=flatten();
+  return (p.data||[]).length;
+}
+
+function mergeInto(lf, lr){
+  (lf||[]).forEach(function(f){
+    let cf=findFarm(f.id);
+    if(!cf){ cf={id:f.id,nome:f.nome,gauges:[]}; farms.push(cf); }
+    (f.gauges||[]).forEach(function(g){
+      if(!cf.gauges.find(function(x){return x.id===g.id;})){ const cg={id:g.id,nome:g.nome}; if(g.lat!=null)cg.lat=g.lat; if(g.lng!=null)cg.lng=g.lng; cf.gauges.push(cg); readings[g.id]=readings[g.id]||{}; }
+    });
+  });
+  for(const gid in (lr||{})){ readings[gid]=readings[gid]||{}; const m=lr[gid]||{}; for(const d in m){ if(readings[gid][d]===undefined) readings[gid][d]=m[d]; } }
+}
+async function afterLogin(){
+  hideAuth();
+  loadLS();
+  const localFarms=farms, localReadings=readings;
+  const localHasData = localFarms.length>0 && (localFarms.length>1 || (localFarms[0].gauges||[]).length>1 || Object.keys(localReadings).some(function(k){return Object.keys(localReadings[k]||{}).length>0;}));
+  const firstOnDevice = (localStorage.getItem('pp.lastUid') !== authUser.id);
+  if(!farms.length){ seed(); }
+  const t=today(); cursor=t; calY=t.y; calM=t.m; anoYear=t.y;
+  render();
+  try{
+    await pullAll();
+    if(firstOnDevice && localHasData){
+      mergeInto(localFarms, localReadings);
+      if(!findGauge(sel.gauge)) selectFirst();
+      saveLocal(); await syncPush(); showToast('Dados deste aparelho enviados para a nuvem');
+    } else {
+      if(!findGauge(sel.gauge)) selectFirst();
+      saveLocal(); setSync('ok');
+    }
+    localStorage.setItem('pp.lastUid', authUser.id);
+    render();
+  }catch(e){ setSync('off'); showToast('Sem conexão — usando dados locais'); }
+}
+
+function authForm(){
+  document.getElementById('auth').innerHTML='<div class="authbox">'
+    +'<div class="authlogo"><div class="t">PROEST Pluviometria</div><div class="s">'+(authMode==='login'?'Entre na sua conta':'Crie sua conta')+'</div></div>'
+    +'<input id="auEmail" type="email" inputmode="email" autocapitalize="none" autocomplete="email" placeholder="seu@email.com">'
+    +'<input id="auPass" type="password" autocomplete="current-password" placeholder="senha (mín. 6 caracteres)">'
+    +'<button class="primary" onclick="authSubmit()">'+(authMode==='login'?'Entrar':'Criar conta')+'</button>'
+    +'<div class="err" id="auErr"></div>'
+    +'<div class="link" onclick="authToggle()">'+(authMode==='login'?'Não tem conta? Criar conta':'Já tem conta? Entrar')+'</div>'
+    +'</div>';
+}
+function showLogin(){ document.getElementById('app').style.display='none'; const s=document.getElementById('sheet'); if(s)s.classList.remove('open'); document.getElementById('auth').style.display='flex'; authForm(); }
+function hideAuth(){ document.getElementById('auth').style.display='none'; document.getElementById('app').style.display='flex'; }
+function authToggle(){ authMode=(authMode==='login'?'signup':'login'); authForm(); }
+function authErr(m){ const e=document.getElementById('auErr'); if(e)e.textContent=m||''; }
+function traduzErro(m){ m=m||'Erro'; if(/Invalid login/i.test(m))return 'E-mail ou senha incorretos.'; if(/already registered|already exists/i.test(m))return 'E-mail já cadastrado — faça login.'; if(/Email not confirmed/i.test(m))return 'Confirme seu e-mail antes de entrar.'; if(/at least 6/i.test(m))return 'A senha precisa de ao menos 6 caracteres.'; return m; }
+async function authSubmit(){
+  if(!sbInit()){ authErr('Carregando… tente novamente.'); return; }
+  const em=(document.getElementById('auEmail').value||'').trim(), pw=document.getElementById('auPass').value||'';
+  if(!em||pw.length<6){ authErr('Informe e-mail e senha (mín. 6 caracteres).'); return; }
+  authErr('Aguarde…');
+  try{
+    if(authMode==='signup'){
+      const {data,error}=await sb.auth.signUp({email:em,password:pw}); if(error)throw error;
+      if(!data.session){ authMode='login'; authForm(); authErr('Conta criada! Confirme pelo e-mail e depois entre.'); return; }
+      authUser=data.user; await afterLogin(); return;
+    } else {
+      const {data,error}=await sb.auth.signInWithPassword({email:em,password:pw}); if(error)throw error;
+      authUser=data.user; await afterLogin(); return;
+    }
+  }catch(e){ authErr(traduzErro(e&&e.message)); }
+}
+async function doLogout(){ try{ if(sbInit())await sb.auth.signOut(); }catch(e){} authUser=null; lastSync=null; authMode='login'; showLogin(); }
+
 /* boot */
-seed(); const _t=today(); cursor=_t; calY=_t.y; calM=_t.m; anoYear=_t.y; render();
+(async function boot(){
+  let tries=0; while(!sbInit() && tries<25){ await new Promise(r=>setTimeout(r,150)); tries++; }
+  if(!sbInit()){ showLogin(); return; }
+  try{ const {data}=await sb.auth.getSession(); if(data&&data.session&&data.session.user){ authUser=data.session.user; await afterLogin(); } else { showLogin(); } }catch(e){ showLogin(); }
+  try{ sb.auth.onAuthStateChange(function(ev){ if(ev==='SIGNED_OUT'){ authUser=null; showLogin(); } }); }catch(e){}
+  window.addEventListener('online', function(){ if(authUser) syncPush(); });
+})();
 </script>
 </body>
 </html>
